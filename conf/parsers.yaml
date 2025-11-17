@@ -53,14 +53,14 @@ parsers:
 
   - name: docker-daemon
     format: regex
-    regex: time="(?<time>[^ ]*)" level=(?<level>[^ ]*) msg="(?<msg>[^ ].*)"
+    regex: 'time="(?<time>[^ ]*)" level=(?<level>[^ ]*) msg="(?<msg>[^ ].*)"'
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L'
     time_keep: On
 
   - name: syslog-rfc5424
     format: regex
-    regex: ^\<(?<pri>[0-9]{1,5})\>1 (?<time>[^ ]+) (?<host>[^ ]+) (?<ident>[^ ]+) (?<pid>[-0-9]+) (?<msgid>[^ ]+) (?<extradata>(\[(.*?)\]|-)) (?<message>.+)$
+    regex: '^\<(?<pri>[0-9]{1,5})\>1 (?<time>[^ ]+) (?<host>[^ ]+) (?<ident>[^ ]+) (?<pid>[-0-9]+) (?<msgid>[^ ]+) (?<extradata>(\[(.*?)\]|-)) (?<message>.+)$'
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
     time_keep: On
@@ -74,7 +74,7 @@ parsers:
 
   - name: syslog-rfc3164
     format: regex
-    regex: '/^\<(?<pri>[0-9]+)\>(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$/'
+    regex: '^\<(?<pri>[0-9]+)\>(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$'
     time_key: time
     time_format: '%b %d %H:%M:%S'
     time_keep: On
@@ -105,7 +105,7 @@ parsers:
   - name: cri
     # https://rubular.com/r/tjUt3Awgg4
     format: regex
-    regex: ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$
+    regex: '^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$'
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
     time_keep: On
