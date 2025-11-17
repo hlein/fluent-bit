@@ -123,7 +123,7 @@ parsers:
         \<(?<pri>[0-9]{1,5})\>1\s
         (?<time>[^\s]+)\s
         (?<host>[^\s]+)\s
-        kernel\s -\s -\s -\s \[[0-9\.]*\]\s
+        kernel\s -\s -\s -\s \[\s*[0-9\.]*\]\s
         (?<logprefix>[^\s]*)\s?
         IN=(?<in>[^\s]*)\s
         OUT=(?<out>[^\s]*)\s
