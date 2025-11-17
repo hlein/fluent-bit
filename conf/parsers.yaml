@@ -117,6 +117,34 @@ parsers:
   - name: kmsg-netfilter-log
     # Examples: TCP: https://rubular.com/r/Q8YY6fHqlqwGI0  UDP: https://rubular.com/r/B0ID69H9FvN0tp
     format: regex
-    regex: '^\<(?<pri>[0-9]{1,5})\>1 (?<time>[^ ]+) (?<host>[^ ]+) kernel - - - \[[0-9\.]*\] (?<logprefix>[^ ]*)\s?IN=(?<in>[^ ]*) OUT=(?<out>[^ ]*) MAC=(?<macsrc>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}):(?<macdst>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}):(?<ethtype>[0-9a-f]{2}:[0-9a-f]{2}) SRC=(?<saddr>[^ ]*) DST=(?<daddr>[^ ]*) LEN=(?<len>[^ ]*) TOS=(?<tos>[^ ]*) PREC=(?<prec>[^ ]*) TTL=(?<ttl>[^ ]*) ID=(?<id>[^ ]*) (D*F*)\s*PROTO=(?<proto>[^ ]*)\s?((SPT=)?(?<sport>[0-9]*))\s?((DPT=)?(?<dport>[0-9]*))\s?((LEN=)?(?<protolen>[0-9]*))\s?((WINDOW=)?(?<window>[0-9]*))\s?((RES=)?(?<res>0?x?[0-9]*))\s?(?<flag>[^ ]*)\s?((URGP=)?(?<urgp>[0-9]*))'
+    regex: |
+      (?x)
+      ^
+        \<(?<pri>[0-9]{1,5})\>1\s
+        (?<time>[^\s]+)\s
+        (?<host>[^\s]+)\s
+        kernel\s -\s -\s -\s \[[0-9\.]*\]\s
+        (?<logprefix>[^\s]*)\s?
+        IN=(?<in>[^\s]*)\s
+        OUT=(?<out>[^\s]*)\s
+        MAC= (?<macsrc>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+        :    (?<macdst>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+        :    (?<ethtype>[0-9a-f]{2}:[0-9a-f]{2})\s
+        SRC=(?<saddr>[^\s]*)\s
+        DST=(?<daddr>[^\s]*)\s
+        LEN=(?<len>[^\s]*)\s
+        TOS=(?<tos>[^\s]*)\s
+        PREC=(?<prec>[^\s]*)\s
+        TTL=(?<ttl>[^\s]*)\s
+        ID=(?<id>[^\s]*)\s
+        (D*F*)\s*
+        PROTO=(?<proto>[^\s]*)\s?
+        ( (SPT=)? (?<sport>[0-9]*) )\s?
+        ( (DPT=)? (?<dport>[0-9]*) )\s?
+        ( (LEN=)? (?<protolen>[0-9]*) )\s?
+        ( (WINDOW=)? (?<window>[0-9]*) )\s?
+        ( (RES=)? (?<res>0?x?[0-9]*) )\s?
+        (?<flag>[^\s]*)\s?
+        ( (URGP=)? (?<urgp>[0-9]*) )
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
