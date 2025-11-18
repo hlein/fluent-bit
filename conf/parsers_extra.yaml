@@ -71,7 +71,7 @@ parsers:
 
   - name: iptables
     # Parse IP Tables rules - this one regex should capture pretty much any IP Tables rule and split it into the various fields
-    # https://regex101.com/r/VBRq81/1
+    # https://regex101.com/r/tzK8mr/1
     format: regex
     regex: |
       (?x)
