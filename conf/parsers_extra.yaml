@@ -119,7 +119,7 @@ parsers:
          WINDOW=(?<proto_window_size>\d+)\s
          RES=(?<pkt_res>\w+)?\s
          (?<pkt_type>\w+)\s
-         ( (?<pkt_flag>\w+)? \s )*
+         (?<pkt_flag> (?:[A-Z]+\s)* )
          URGP=(?<pkg_urgency>\d)\s
         )?
        )?
