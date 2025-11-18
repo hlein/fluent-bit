@@ -78,7 +78,21 @@ parsers:
        \[ (?<rule_chain>\w*) - (?<rule_name>\w*) - (?<accept_or_drop>\w*) \]
        IN=(?<in_interface>[\w.]+)?\s
        OUT=(?<out_interface>[\w.]+)?\s
-       MAC=(?<mac_address>[\w:]+)?\s
+
+       # MAC can be missing or empty
+       (?:
+        MAC=
+        (?:
+         (?<macdst>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+         :
+         (?<macsrc>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+         :
+         # Ether type can be longer when processing incoming VLAN-tagged packets
+         (?<ethtype>[0-9a-f]{2} (?::[0-9a-f]{2})+ )
+        )?
+        \s
+       )?
+
        SRC=(?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\s
        DST=(?<dest>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\s
        LEN=(?<pkt_len>\d+)\s
@@ -86,7 +100,7 @@ parsers:
        PREC=(?<pkt_prec>[\w\d]+)\s
        TTL=(?<pkt_ttl>\d+)\s
        ID=(?<pkt_id>\d+)\s?
-       (?<pkg_frg>[A-Z\s].?)\s?
+       (?<pkt_frg>[A-Z\s].?)\s?
        PROTO=(?<protocol>[\w\d]+)\s
        (
         SPT=(?<source_port>.*)\s
