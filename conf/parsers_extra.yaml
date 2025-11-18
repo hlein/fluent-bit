@@ -75,7 +75,10 @@ parsers:
     format: regex
     regex: |
       (?x)
+
+       # Log prefix - depends on the rule-building tools
        \[ (?<rule_chain>\w*) - (?<rule_name>\w*) - (?<accept_or_drop>\w*) \]
+
        IN=(?<in_interface>[\w.]+)?\s
        OUT=(?<out_interface>[\w.]+)?\s
 
@@ -101,19 +104,27 @@ parsers:
        TTL=(?<pkt_ttl>\d+)\s
        ID=(?<pkt_id>\d+)\s?
        (?<pkt_frg>[A-Z\s].?)\s?
+
+       # TCP and UDP have some next fields in common
        PROTO=(?<protocol>[\w\d]+)\s
        (
-        SPT=(?<source_port>.*)\s
-        DPT=(?<dest_port>.*)\s
-        ( LEN=(?<proto_pkt_len>\w+)? )?
+        SPT=(?<source_port>\d+)\s
+        DPT=(?<dest_port>\d+)\s
+        ( LEN=(?<proto_pkt_len>\w+)? \s )?
         (
+         (?:
+          SEQ=(?<tcp_seq>\d+)\s
+          ACK=(?<tcp_ack>\d+)\s
+         )?
          WINDOW=(?<proto_window_size>\d+)\s
          RES=(?<pkt_res>\w+)?\s
          (?<pkt_type>\w+)\s
-         ( (?<pkt_flag>\w+)? )\s?
-         URGP=(?<pkg_urgency>\d)
-        )?\s
+         ( (?<pkt_flag>\w+)? \s )*
+         URGP=(?<pkg_urgency>\d)\s
+        )?
        )?
+
+       # ICMP is the next most likely protocol
        (
         TYPE=(?<pkt_icmp_type>\d+)\s
         CODE=(?<pkt_icmp_code>\d+)\s
