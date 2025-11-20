@@ -142,9 +142,9 @@ parsers:
        (?:
         MAC=
         (?:
-         (?<macdst>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+         (?<macdst>[0-9a-f]{2} (?: :[0-9a-f]{2}){5} )
          :
-         (?<macsrc>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+         (?<macsrc>[0-9a-f]{2} (?: :[0-9a-f]{2}){5} )
          :
          # Ether type can be longer when processing incoming VLAN-tagged packets
          (?<ethtype>[0-9a-f]{2} (?::[0-9a-f]{2})+ )
@@ -194,7 +194,7 @@ parsers:
        |
         (?<proto>ICMP) \s
         TYPE=(?<icmp_type>\d+) \s
-        CODE=(?<icmp_code>\d) \s
+        CODE=(?<icmp_code>\d+) \s
         # Some ICMP errors have an embedded packet header inside
         (?:
          ID=(?<icmp_id>\d+) \s
