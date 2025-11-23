@@ -26,7 +26,7 @@ squash_date()
   sed -E 's/"date":[0-9]+\.[0-9]+,/"date":1234567890.123456,/'
 }
 
-# Unless in verbose mode, flatten each output to a checksum of itself
+# In default terse mode, flatten each output to a checksum of itself
 filter()
 {
   squash_date | sha256sum | cut -d\  -f1
@@ -34,7 +34,7 @@ filter()
 
 usage()
 {
-  die "Usage: $0 [-v] [file1.test [file2.test ...]]
+  die "Usage: $0 [-c|-v] [file1.test [file2.test ...]]
 
   Process parser*.*.test files, either each one named on the command line,
   or every file in pwd matching that pattern.
@@ -42,14 +42,20 @@ usage()
   Makes sure the output produced by the .conf file and .yaml configs match.
 
   Needs a corresponding .conf and .yaml for each.
+
+  By default compare hashes of outputs; alternately:
+   -c  Show and compare wc of the output (easy to spot gross differences)
+   -v  Show and compare full verbose outputs (expose all details)
 "
 }
 
-# Empty output (or a hash of an empty string) is a sure sign of failure
+# Empty output, count of empty output, or hash of an empty string
+# is a sure sign of failure
 check_output()
 {
   local check="$1"
   [[ "$check" = "" ]] || \
+  [[ "$check" =~ ^\s+[01]\s+0\s+[01]$ ]] || \
   [[ "$check" = "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b" ]] || \
   [[ "$check" = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ]] && \
 	echo -e "\n" && die "### FAIL '$TEST_FILE' output was empty"
@@ -59,6 +65,7 @@ TEST_FILES=()
 
 for arg in "$@"; do
   case "$arg" in
+    -c) filter() { squash_date | wc; }; ;;
     -v) filter() { squash_date; }; ;;
     -*) usage ;;
     *)  TEST_FILES+=("$arg") ;;
@@ -80,7 +87,8 @@ for TEST_FILE in "${TEST_FILES[@]}" ; do
   PARSER_FILE="${BASH_REMATCH[1]}"
   PARSER_NAME="${BASH_REMATCH[2]}"
 
-  echo "### '$TEST_FILE'"
+  LINES=$(wc -l < "$TEST_FILE")
+  echo "### '$TEST_FILE': $LINES lines"
   [[ -e ${PARSER_FILE}.conf ]] || { warn "'${TEST_FILE}': legacy '${PARSER_FILE}.conf' not found, skipping"; continue; }
   [[ -e ${PARSER_FILE}.yaml ]] || { warn "'${TEST_FILE}': new '${PARSER_FILE}.yaml' not found, skipping"; continue; }
   echo -n "CONF: ";
@@ -92,9 +100,9 @@ for TEST_FILE in "${TEST_FILES[@]}" ; do
   check_output "$YAML_OUT"
   echo "$YAML_OUT"
   if [[ "$CONF_OUT" == "$YAML_OUT" ]]; then
-    echo "### OK '$TEST_FILE'"
+    echo "### MATCH '$TEST_FILE'"
   else
-    die "### FAIL '$TEST_FILE'"
+    die "### NO MATCH '$TEST_FILE'"
   fi
   echo
 done

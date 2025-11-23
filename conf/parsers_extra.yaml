@@ -53,11 +53,11 @@ parsers:
 
   - name: universal
     format: regex
-    regex: ^(?<message>.*)$
+    regex: '^(?<message>.*)$'
 
   - name: uuid
     format: regex
-    regex: (?<uuid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})
+    regex: '(?<uuid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})'
     #UUID v1 :
     #/^[0-9A-F]{8}-[0-9A-F]{4}-[1][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i
     #UUID v2 :
@@ -68,13 +68,170 @@ parsers:
     #/^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i
     #UUID v5 :
     #/^[0-9A-F]{8}-[0-9A-F]{4}-[5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i
-    #
-    # Parse IP Tables rules - this one regex should capture pretty much any IP Tables rule and split it into the various fields
 
   - name: iptables
+    # Parse IP Tables rules
+    # N.B. ipv4 only
+    # https://regex101.com/r/DujdAl/1
     format: regex
-    regex: '\[(?<rule_chain>\w*)-(?<rule_name>\w*)-(?<accept_or_drop>\w*)\]IN=(?<in_interface>[\w.]+)? OUT=(?<out_interface>[\w.]+)? MAC=(?<mac_address>[\w:]+)? SRC=(?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3}) DST=(?<dest>(?:[0-9]{1,3}\.){3}[0-9]{1,3}) LEN=(?<pkt_len>\d+) TOS=(?<pkt_tos>[\w\d]+) PREC=(?<pkt_prec>[\w\d]+) TTL=(?<pkt_ttl>\d+) ID=(?<pkt_id>\d+)\s?(?<pkg_frg>[A-Z\s].?)\s?PROTO=(?<protocol>[\w\d]+) (SPT=(?<source_port>.*) DPT=(?<dest_port>.*) (LEN=(?<proto_pkt_len>\w+)?)?(WINDOW=(?<proto_window_size>\d+) RES=(?<pkt_res>\w+)? (?<pkt_type>\w+)\s((?<pkt_flag>\w+)?)\s?URGP=(?<pkg_urgency>\d))? )?(TYPE=(?<pkt_icmp_type>\d+) CODE=(?<pkt_icmp_code>\d+) ID=(?<pkt_icmp_id>\d+) SEQ=(?<pkt_icmp_seq>\d+) )?$'
-    types: 'source_port:integer,dest_port:integer,pkt_ttl:integer,pkt_tos:integer,pkt_len:integer'
+    regex: |
+      (?x)
+
+       # kernel timestamp - optional, and may have already been consumed
+       (?: \[\s* (?<kernel_uptime>[0-9]+\.[0-9]+) \]\s )?
+
+       # Log prefix - depends on the rule-building tools
+       (?:
+
+        # Original Fluent-Bit PR #3108
+        \[
+        (?<rule_chain>\w*) -
+        (?<rule_name>\w*) -
+        (?<accept_or_drop>\w*)
+        \]
+       |
+
+        # UFW
+        \[ UFW\s (?<accept_or_drop> (?: ALLOW | AUDIT | BLOCK ) ) \] \s
+       |
+
+        # firewalld
+        (?<rule_chain>[^_]+)_
+        (?<fw_direction> (?: FWD | IN | OUT ) )_
+        (?: (?<fw_zone>[a-z0-9]+) _ )?
+        (?<accept_or_drop>[A-Z]+) : \s
+       |
+
+        # Calico
+        calico-
+        (?<accept_or_drop>\w*)
+        : \s
+       |
+
+        # other
+        FW:\s (?<fw_direction>[a-z]+) \s
+        (?<accept_or_drop>[A-Z]+) \s
+       |
+
+        # Conntrack error
+        nf_ct_proto_6:\s
+        (?:
+         (?<nf_ct_err>bad\s checksum)
+        |
+         (?<nf_ct_err>challenge-ack\s ignored)
+        |
+         (?<nf_ct_err>invalid \s
+           (?: new | rst | tcp\s flag\s combination | truncated\s packet )
+         )
+        |
+         packet\s \( index\s [0-3] \) \s
+         in\s dir\s [01]\s
+         (?<nf_ct_err>ignored) ,\s
+         state\s (?<tcp_state>[A-Z0-9_]+)
+        ) \s
+       |
+
+        # support arbitrary unknown prefixes rather than fail to match
+        (?<fw_unknown_prefix>.{1,64}?)
+       )
+
+       IN=(?<in_interface>[\w.]+)?\s
+       OUT=(?<out_interface>[\w.]+)?\s
+
+       # MAC can be missing or empty
+       (?:
+        MAC=
+        (?:
+         (?<macdst>[0-9a-f]{2} (?: :[0-9a-f]{2}){5} )
+         :
+         (?<macsrc>[0-9a-f]{2} (?: :[0-9a-f]{2}){5} )
+         :
+         # Ether type can be longer when processing incoming VLAN-tagged packets
+         (?<ethtype>[0-9a-f]{2} (?::[0-9a-f]{2})+ )
+        )?
+        \s
+       )?
+
+       SRC=(?<source>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\s
+       DST=(?<dest>(?:[0-9]{1,3}\.){3}[0-9]{1,3})\s
+       LEN=(?<pkt_len>\d+)\s
+       # kernel nf_log_syslog.c mixes 0x%x and 0x%X for various hex outputs,
+       # be defensive in case someone decides to standardize some day
+       TOS=(?<pkt_tos>0x[A-Fa-f0-9]+)\s
+       PREC=(?<pkt_prec>0x[A-Fa-f0-9]+)\s
+       TTL=(?<pkt_ttl>\d+)\s
+       ID=(?<pkt_id>\d+)\s
+       (?: (?<ip_df>DF) \s )?
+
+       # Get what we can out of each protocol
+       PROTO=
+       (?:
+        (?<proto>TCP) \s
+        SPT=(?<src_port>\d+) \s
+        DPT=(?<dst_port>\d+) \s
+        # Some logs are missing SEQ= and ACK=
+        (?:
+         SEQ=\d+ \s
+         ACK=\d+ \s
+        )?
+        WINDOW=(?<tcp_win>[0-9]+) \s
+        RES=0x[A-Fa-f0-9]{2} \s
+        (?: (?<tcp_flag_cwr>CWR) \s )?
+        (?: (?<tcp_ewe>EWE) \s )?
+        (?: (?<tcp_urg>URG) \s )?
+        (?: (?<tcp_ack>ACK) \s )?
+        (?: (?<tcp_psh>PSH) \s )?
+        (?: (?<tcp_rst>RST) \s )?
+        (?: (?<tcp_syn>SYN) \s )?
+        (?: (?<tcp_fin>FIN) \s )?
+        URGP=\d+ \s
+        (?: OPT \s \( [^)\s]+ \) \s )?
+       |
+        (?<proto>UDP) \s
+        SPT=(?<src_port>\d+) \s
+        DPT=(?<dst_port>\d+) \s
+        LEN=(?<udp_len>\d+) \s
+       |
+        (?<proto>ICMP) \s
+        TYPE=(?<icmp_type>\d+) \s
+        CODE=(?<icmp_code>\d+) \s
+        # Some ICMP errors have an embedded packet header inside
+        (?:
+         ID=(?<icmp_id>\d+) \s
+         SEQ=(?<icmp_seq>\d+) \s
+        |
+         \[
+         SRC= (?<icmp_err_src_ip>[0-9.]{7,15}) \s
+         DST= (?<icmp_err_dst_ip>[0-9.]{7,15}) \s
+         .*
+         PROTO=(?<icmp_err_proto>[^ ]+) \s
+         (?:
+          SPT=(?<icmp_err_src_port>\d+) \s
+          DPT=(?<icmp_err_dst_port>\d+) \s
+         )?
+         [^\]]*
+         \] .*
+        )?
+       |
+        (?<proto>ESP) \s
+        SPI=(?<esp_spi>0x[A-Fa-f0-9]+) \s
+       |
+        (?<proto>[^ ]+) \s
+        (?: (?<proto_extra>[^\s].*) \s )?
+       )
+
+       # Output rules might have --log-uid applied
+       (?:
+        UID=(?<uid>[0-9]+) \s
+        GID=(?<gid>[0-9]+) \s
+       )?
+       # Packet markings
+       (?: MARK=(?<pkt_mark>0x[A-Fa-f0-9]+) \s )?
+
+       # support arbitrary unknown suffixes rather than fail to match
+       (?<fw_unknown_suffix>.*)
+       $
+    types: 'src_port:integer,dst_port:integer,pkt_ttl:integer,pkt_tos:integer,pkt_len:integer'
 
   - name: couchbase_json_log_nanoseconds
     # Various parsers for Couchbase Server logs

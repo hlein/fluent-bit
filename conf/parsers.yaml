@@ -53,14 +53,15 @@ parsers:
 
   - name: docker-daemon
     format: regex
-    regex: time="(?<time>[^ ]*)" level=(?<level>[^ ]*) msg="(?<msg>[^ ].*)"
+    regex: 'time="(?<time>[^ ]*)" level=(?<level>[^ ]*) msg="(?<msg>[^ ].*)"'
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L'
     time_keep: On
 
   - name: syslog-rfc5424
+    # https://rubular.com/r/PMypubVdqyOTT0
     format: regex
-    regex: ^\<(?<pri>[0-9]{1,5})\>1 (?<time>[^ ]+) (?<host>[^ ]+) (?<ident>[^ ]+) (?<pid>[-0-9]+) (?<msgid>[^ ]+) (?<extradata>(\[(.*?)\]|-)) (?<message>.+)$
+    regex: '^\<(?<pri>[0-9]{1,5})\>1 (?<time>[^ ]+) (?<host>[^ ]+) (?<ident>[^ ]+) (?<pid>[-0-9]+) (?<msgid>[^ ]+) (?<extradata>(\[(.*?)\]|-))(?: (?<message>.+))?$'
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
     time_keep: On
@@ -74,7 +75,7 @@ parsers:
 
   - name: syslog-rfc3164
     format: regex
-    regex: '/^\<(?<pri>[0-9]+)\>(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$/'
+    regex: '^\<(?<pri>[0-9]+)\>(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$'
     time_key: time
     time_format: '%b %d %H:%M:%S'
     time_keep: On
@@ -105,7 +106,7 @@ parsers:
   - name: cri
     # https://rubular.com/r/tjUt3Awgg4
     format: regex
-    regex: ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$
+    regex: '^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$'
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
     time_keep: On
@@ -117,6 +118,34 @@ parsers:
   - name: kmsg-netfilter-log
     # Examples: TCP: https://rubular.com/r/Q8YY6fHqlqwGI0  UDP: https://rubular.com/r/B0ID69H9FvN0tp
     format: regex
-    regex: '^\<(?<pri>[0-9]{1,5})\>1 (?<time>[^ ]+) (?<host>[^ ]+) kernel - - - \[[0-9\.]*\] (?<logprefix>[^ ]*)\s?IN=(?<in>[^ ]*) OUT=(?<out>[^ ]*) MAC=(?<macsrc>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}):(?<macdst>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}):(?<ethtype>[0-9a-f]{2}:[0-9a-f]{2}) SRC=(?<saddr>[^ ]*) DST=(?<daddr>[^ ]*) LEN=(?<len>[^ ]*) TOS=(?<tos>[^ ]*) PREC=(?<prec>[^ ]*) TTL=(?<ttl>[^ ]*) ID=(?<id>[^ ]*) (D*F*)\s*PROTO=(?<proto>[^ ]*)\s?((SPT=)?(?<sport>[0-9]*))\s?((DPT=)?(?<dport>[0-9]*))\s?((LEN=)?(?<protolen>[0-9]*))\s?((WINDOW=)?(?<window>[0-9]*))\s?((RES=)?(?<res>0?x?[0-9]*))\s?(?<flag>[^ ]*)\s?((URGP=)?(?<urgp>[0-9]*))'
+    regex: |
+      (?x)
+      ^
+        \<(?<pri>[0-9]{1,5})\>1\s
+        (?<time>[^\s]+)\s
+        (?<host>[^\s]+)\s
+        kernel\s -\s -\s -\s \[\s*[0-9\.]*\]\s
+        (?<logprefix>[^\s]*)\s?
+        IN=(?<in>[^\s]*)\s
+        OUT=(?<out>[^\s]*)\s
+        MAC= (?<macdst>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+        :    (?<macsrc>[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2}:[0-9a-f]{2})
+        :    (?<ethtype>[0-9a-f]{2}:[0-9a-f]{2})\s
+        SRC=(?<saddr>[^\s]*)\s
+        DST=(?<daddr>[^\s]*)\s
+        LEN=(?<len>[^\s]*)\s
+        TOS=(?<tos>[^\s]*)\s
+        PREC=(?<prec>[^\s]*)\s
+        TTL=(?<ttl>[^\s]*)\s
+        ID=(?<id>[^\s]*)\s
+        (D*F*)\s*
+        PROTO=(?<proto>[^\s]*)\s?
+        ( (SPT=)? (?<sport>[0-9]*) )\s?
+        ( (DPT=)? (?<dport>[0-9]*) )\s?
+        ( (LEN=)? (?<protolen>[0-9]*) )\s?
+        ( (WINDOW=)? (?<window>[0-9]*) )\s?
+        ( (RES=)? (?<res>0?x?[0-9]*) )\s?
+        (?<flag>[^\s]*)\s?
+        ( (URGP=)? (?<urgp>[0-9]*) )
     time_key: time
     time_format: '%Y-%m-%dT%H:%M:%S.%L%z'
